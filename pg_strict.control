@@ -1,0 +1,6 @@
+comment = 'Blocks dangerous queries before they run - prevents accidental mass updates/deletes without WHERE clauses'
+default_version = '0.1.0'
+module_pathname = 'pg_strict'
+relocatable = false
+superuser = true
+trusted = true
