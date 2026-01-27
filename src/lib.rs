@@ -277,14 +277,12 @@ mod tests {
 
     #[pg_test]
     fn test_where_false_and_current_of_count_as_where() {
-        let violations = analyze_missing_where_operations(
-            "UPDATE users SET active = false WHERE false;",
-        );
+        let violations =
+            analyze_missing_where_operations("UPDATE users SET active = false WHERE false;");
         assert!(violations.is_empty());
 
-        let violations = analyze_missing_where_operations(
-            "DELETE FROM users WHERE CURRENT OF some_cursor;",
-        );
+        let violations =
+            analyze_missing_where_operations("DELETE FROM users WHERE CURRENT OF some_cursor;");
         assert!(violations.is_empty());
     }
 
@@ -295,30 +293,23 @@ mod tests {
         );
         assert!(violations.is_empty());
 
-        let violations = analyze_missing_where_operations(
-            "DELETE FROM ONLY \"Users\";",
-        );
+        let violations = analyze_missing_where_operations("DELETE FROM ONLY \"Users\";");
         assert_eq!(violations, vec![Operation::Delete]);
     }
 
     #[pg_test]
     fn test_comments_and_strings_do_not_fake_where() {
-        let violations = analyze_missing_where_operations(
-            "UPDATE users SET note = 'WHERE id = 1';",
-        );
+        let violations =
+            analyze_missing_where_operations("UPDATE users SET note = 'WHERE id = 1';");
         assert_eq!(violations, vec![Operation::Update]);
 
-        let violations = analyze_missing_where_operations(
-            "DELETE FROM users /* WHERE id = 1 */;",
-        );
+        let violations = analyze_missing_where_operations("DELETE FROM users /* WHERE id = 1 */;");
         assert_eq!(violations, vec![Operation::Delete]);
     }
 
     #[pg_test]
     fn test_delete_using_without_where_is_flagged() {
-        let violations = analyze_missing_where_operations(
-            "DELETE FROM users USING accounts;",
-        );
+        let violations = analyze_missing_where_operations("DELETE FROM users USING accounts;");
         assert_eq!(violations, vec![Operation::Delete]);
     }
 
@@ -348,9 +339,8 @@ mod tests {
 
     #[pg_test]
     fn test_update_with_from_without_where_is_flagged() {
-        let violations = analyze_missing_where_operations(
-            "UPDATE users SET active = false FROM accounts;",
-        );
+        let violations =
+            analyze_missing_where_operations("UPDATE users SET active = false FROM accounts;");
         assert_eq!(violations, vec![Operation::Update]);
     }
 
@@ -425,8 +415,7 @@ mod tests {
     fn test_e2e_delete_cte_with_where_allowed_when_on() {
         Spi::run("CREATE TEMP TABLE pg_strict_e2e_d_cte_safe(id int primary key);")
             .expect("create temp table");
-        Spi::run("INSERT INTO pg_strict_e2e_d_cte_safe VALUES (1), (2);")
-            .expect("seed temp table");
+        Spi::run("INSERT INTO pg_strict_e2e_d_cte_safe VALUES (1), (2);").expect("seed temp table");
 
         Spi::run("SET pg_strict.require_where_on_delete = 'on';").expect("set delete mode");
         Spi::run(

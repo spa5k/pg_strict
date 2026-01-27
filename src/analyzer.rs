@@ -1,7 +1,7 @@
-use pgrx::memcx;
-use pgrx::pg_sys;
 use pgrx::PgSqlErrorCode;
 use pgrx::PgTryBuilder;
+use pgrx::memcx;
+use pgrx::pg_sys;
 use std::ffi::CString;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,7 +37,8 @@ impl QueryAnalyzer {
     /// Note: parse errors will raise a PostgreSQL ERROR, which will abort the
     /// current statement just like normal parsing would.
     pub fn new(query_string: &str) -> Result<Self, Box<PgSqlErrorCode>> {
-        let c_query = CString::new(query_string).map_err(|_| Box::new(PgSqlErrorCode::ERRCODE_WARNING))?;
+        let c_query =
+            CString::new(query_string).map_err(|_| Box::new(PgSqlErrorCode::ERRCODE_WARNING))?;
 
         let statements = PgTryBuilder::new(|| {
             let statements = memcx::current_context(|_mcx| unsafe {
@@ -85,37 +86,43 @@ unsafe fn collect_parsed_statements(raw_list: *mut pg_sys::List) -> Vec<ParsedSt
         return Vec::new();
     }
 
-    let list = &*raw_list;
+    let list = unsafe { &*raw_list };
     let len = list.length.max(0) as usize;
     if len == 0 || list.elements.is_null() {
         return Vec::new();
     }
 
-    let cells = std::slice::from_raw_parts(list.elements, len);
+    let cells = unsafe { std::slice::from_raw_parts(list.elements, len) };
     let mut parsed = Vec::new();
 
     for cell in cells {
         // The parser returns a pointer list of RawStmt nodes.
-        let raw_stmt = cell.ptr_value as *mut pg_sys::RawStmt;
+        let raw_stmt = unsafe { cell.ptr_value as *mut pg_sys::RawStmt };
         if raw_stmt.is_null() {
             continue;
         }
 
-        let stmt = (*raw_stmt).stmt;
+        let stmt = unsafe { (*raw_stmt).stmt };
         if stmt.is_null() {
             continue;
         }
 
-        match (*stmt).type_ {
+        match unsafe { (*stmt).type_ } {
             pg_sys::NodeTag::T_UpdateStmt => {
                 let update = stmt as *mut pg_sys::UpdateStmt;
-                let has_where = !(*update).whereClause.is_null();
-                parsed.push(ParsedStmt { operation: Operation::Update, has_where });
+                let has_where = unsafe { !(*update).whereClause.is_null() };
+                parsed.push(ParsedStmt {
+                    operation: Operation::Update,
+                    has_where,
+                });
             }
             pg_sys::NodeTag::T_DeleteStmt => {
                 let delete = stmt as *mut pg_sys::DeleteStmt;
-                let has_where = !(*delete).whereClause.is_null();
-                parsed.push(ParsedStmt { operation: Operation::Delete, has_where });
+                let has_where = unsafe { !(*delete).whereClause.is_null() };
+                parsed.push(ParsedStmt {
+                    operation: Operation::Delete,
+                    has_where,
+                });
             }
             _ => {}
         }

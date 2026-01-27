@@ -197,6 +197,21 @@ SELECT pg_strict_validate_update(
 - `on` mode will raise an error before execution.
 - GUC changes apply to new statements in the current session. `SET LOCAL` applies only within the current transaction.
 
+## PlanetScale Parity Notes
+
+This project is inspired by PlanetScale's hosted `pg_strict` extension. Based on their public documentation, we appear to have strong user-visible parity for the currently documented features:
+
+- Same two settings (`require_where_on_update`, `require_where_on_delete`)
+- Same three modes (`off`, `warn`, `on`)
+- Parse/analyze-time enforcement
+- Standard PostgreSQL configuration patterns (`SET`, `SET LOCAL`, `ALTER ROLE ... SET`, `ALTER DATABASE ... SET`)
+
+Important differences to keep in mind:
+
+- PlanetScale runs inside a managed environment and may have additional internal safeguards that are not visible from documentation alone.
+- Hook-based extensions can interact in subtle ways when multiple extensions install parse/analyze hooks.
+- PlanetScale explicitly notes that configuration changes apply to new connections. In standard PostgreSQL, GUC changes typically take effect immediately for new statements within the current session, while role/database defaults apply at session start.
+
 ## Limitations
 
 pg_strict aims to be simple and predictable. Current scope and trade-offs:
@@ -214,7 +229,3 @@ cargo test
 ```
 
 This runs Rust tests plus pgrx-backed PostgreSQL tests.
-
-## License
-
-This project is provided as-is for educational and development purposes.

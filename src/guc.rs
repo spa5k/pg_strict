@@ -44,17 +44,18 @@ pub fn init_gucs() {
 }
 
 /// Get current modes for UPDATE and DELETE checks.
+#[allow(static_mut_refs)]
 pub fn current_modes() -> (StrictMode, StrictMode) {
     let update_mode = unsafe {
         REQUIRE_WHERE_ON_UPDATE_MODE
-            .as_ref()
-            .map(GucSetting::get)
+            .as_mut()
+            .map(|setting| setting.get())
             .unwrap_or(StrictMode::Off)
     };
     let delete_mode = unsafe {
         REQUIRE_WHERE_ON_DELETE_MODE
-            .as_ref()
-            .map(GucSetting::get)
+            .as_mut()
+            .map(|setting| setting.get())
             .unwrap_or(StrictMode::Off)
     };
     (update_mode, delete_mode)

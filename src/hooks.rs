@@ -1,9 +1,12 @@
 use crate::analyzer::Operation;
-use crate::guc::{current_modes, StrictMode};
+use crate::guc::{StrictMode, current_modes};
 use pgrx::pg_guard;
 use pgrx::pg_sys;
-type PostParseAnalyzeHook =
-    unsafe extern "C-unwind" fn(*mut pg_sys::ParseState, *mut pg_sys::Query, *mut pg_sys::JumbleState);
+type PostParseAnalyzeHook = unsafe extern "C-unwind" fn(
+    *mut pg_sys::ParseState,
+    *mut pg_sys::Query,
+    *mut pg_sys::JumbleState,
+);
 static mut PREV_POST_PARSE_ANALYZE_HOOK: Option<PostParseAnalyzeHook> = None;
 
 /// Generate an enforcement message.
@@ -20,15 +23,19 @@ unsafe fn analyzed_query_operation(query: *mut pg_sys::Query) -> Option<(Operati
         return None;
     }
 
-    let command_type = (*query).commandType;
+    let command_type = unsafe { (*query).commandType };
     let operation = match command_type {
         pg_sys::CmdType::CMD_UPDATE => Operation::Update,
         pg_sys::CmdType::CMD_DELETE => Operation::Delete,
         _ => return None,
     };
 
-    let jointree = (*query).jointree;
-    let has_where = !jointree.is_null() && !(*jointree).quals.is_null();
+    let jointree = unsafe { (*query).jointree };
+    let has_where = if jointree.is_null() {
+        false
+    } else {
+        unsafe { !(*jointree).quals.is_null() }
+    };
 
     Some((operation, has_where))
 }
@@ -41,7 +48,7 @@ unsafe fn check_query_strictness_from_query(query: *mut pg_sys::Query) {
         return;
     }
 
-    let (operation, has_where) = match analyzed_query_operation(query) {
+    let (operation, has_where) = match unsafe { analyzed_query_operation(query) } {
         Some(info) => info,
         None => return,
     };
@@ -69,11 +76,11 @@ unsafe extern "C-unwind" fn pg_strict_post_parse_analyze_hook(
     query: *mut pg_sys::Query,
     jstate: *mut pg_sys::JumbleState,
 ) {
-    if let Some(prev_hook) = PREV_POST_PARSE_ANALYZE_HOOK {
-        prev_hook(pstate, query, jstate);
+    if let Some(prev_hook) = unsafe { PREV_POST_PARSE_ANALYZE_HOOK } {
+        unsafe { prev_hook(pstate, query, jstate) };
     }
 
-    check_query_strictness_from_query(query);
+    unsafe { check_query_strictness_from_query(query) };
 }
 
 /// Register the parse/analyze hook.

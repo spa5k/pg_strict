@@ -79,7 +79,7 @@ pub(crate) fn pg_strict_config() -> TableIterator<
         ),
     ];
 
-    TableIterator::new(config.into_iter())
+    TableIterator::new(config)
 }
 
 #[pg_extern]
