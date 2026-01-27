@@ -237,6 +237,29 @@ mod tests {
         );
         assert_eq!(violations, vec![Operation::Update]);
     }
+
+    #[pg_test]
+    #[should_panic(expected = "UPDATE statement without WHERE clause detected")]
+    fn test_e2e_update_blocked_without_where_when_on() {
+        Spi::run("CREATE TEMP TABLE pg_strict_e2e_u(id int primary key, flag bool);")
+            .expect("create temp table");
+        Spi::run("INSERT INTO pg_strict_e2e_u VALUES (1, true), (2, false);")
+            .expect("seed temp table");
+
+        Spi::run("SET pg_strict.require_where_on_update = 'on';").expect("set update mode");
+        let _ = Spi::run("UPDATE pg_strict_e2e_u SET flag = false;");
+    }
+
+    #[pg_test]
+    #[should_panic(expected = "DELETE statement without WHERE clause detected")]
+    fn test_e2e_delete_blocked_without_where_when_on() {
+        Spi::run("CREATE TEMP TABLE pg_strict_e2e_d(id int primary key);")
+            .expect("create temp table");
+        Spi::run("INSERT INTO pg_strict_e2e_d VALUES (1), (2);").expect("seed temp table");
+
+        Spi::run("SET pg_strict.require_where_on_delete = 'on';").expect("set delete mode");
+        let _ = Spi::run("DELETE FROM pg_strict_e2e_d;");
+    }
 }
 
 #[cfg(test)]
