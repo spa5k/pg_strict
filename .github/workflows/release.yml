@@ -38,6 +38,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache cargo-pgrx + pgrx toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.pgrx
+          key: ${{ runner.os }}-cargo-pgrx-0.16.1-pg${{ env.PG_MAJOR }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-pgrx-0.16.1-pg${{ env.PG_MAJOR }}-
+            ${{ runner.os }}-cargo-pgrx-0.16.1-
+
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -60,11 +73,26 @@ jobs:
       - name: Setup Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
 
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Install cargo-pgrx
-        run: cargo install cargo-pgrx --locked --version 0.16.1
+        run: |
+          if command -v cargo-pgrx >/dev/null 2>&1; then
+            echo "cargo-pgrx already present: $(cargo pgrx --version)"
+          else
+            cargo install cargo-pgrx --locked --version 0.16.1
+          fi
 
       - name: Initialize pgrx (download Postgres)
-        run: cargo pgrx init --pg${PG_MAJOR} download
+        env:
+          PGRX_HOME: /home/runner/.pgrx
+        run: |
+          if [ -x "${PGRX_HOME}/${PG_MAJOR}"*/pgrx-install/bin/pg_config ]; then
+            echo "pgrx for pg${PG_MAJOR} already initialized"
+          else
+            cargo pgrx init --pg${PG_MAJOR} download
+          fi
 
       - name: Build package
         run: |
