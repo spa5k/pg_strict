@@ -1,0 +1,94 @@
+name: Release Extension Asset
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pg_major: "15"
+            pg_feature: "pg15"
+          - pg_major: "16"
+            pg_feature: "pg16"
+          - pg_major: "17"
+            pg_feature: "pg17"
+          - pg_major: "18"
+            pg_feature: "pg18"
+    env:
+      PG_MAJOR: ${{ matrix.pg_major }}
+      PG_FEATURE: ${{ matrix.pg_feature }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            libclang-dev \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            zlib1g-dev \
+            libreadline-dev \
+            flex \
+            bison \
+            libzstd-dev \
+            curl \
+            ca-certificates \
+            jq
+
+      - name: Setup Rust Nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-pgrx
+        run: cargo install cargo-pgrx --locked --version 0.16.1
+
+      - name: Initialize pgrx (download Postgres)
+        run: cargo pgrx init --pg${PG_MAJOR} download
+
+      - name: Build package
+        run: |
+          set -euo pipefail
+
+          VERSION="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="pg_strict") | .version')"
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+
+          PG_CONFIG="$(cargo pgrx info pg-config "${PG_MAJOR}")"
+          echo "Using pg_config at: ${PG_CONFIG}"
+
+          cargo pgrx package \
+            --pg-config "${PG_CONFIG}" \
+            --no-default-features \
+            --features "${PG_FEATURE}" \
+            --out-dir dist/pg${PG_MAJOR}
+
+          mkdir -p dist/pg${PG_MAJOR}/extension
+
+          find dist/pg${PG_MAJOR} -type f -name 'pg_strict.control' -exec cp {} dist/pg${PG_MAJOR}/extension/ \;
+          find dist/pg${PG_MAJOR} -type f -name "pg_strict--${VERSION}.sql" -exec cp {} dist/pg${PG_MAJOR}/extension/ \;
+          find dist/pg${PG_MAJOR} -type f -name 'pg_strict.so' -exec cp {} dist/pg${PG_MAJOR}/extension/ \;
+
+          ls -la dist/pg${PG_MAJOR}/extension
+
+          tar -C dist/pg${PG_MAJOR}/extension -czf \
+            "dist/pg_strict-${VERSION}-pg${PG_MAJOR}-linux-x86_64.tar.gz" \
+            pg_strict.control \
+            "pg_strict--${VERSION}.sql" \
+            pg_strict.so
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/pg_strict-${{ env.VERSION }}-pg${{ env.PG_MAJOR }}-linux-x86_64.tar.gz
