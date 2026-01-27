@@ -54,9 +54,16 @@ impl QueryAnalyzer {
 
     /// Check if a specific operation has a WHERE clause.
     pub fn has_where_clause(&self, operation: Operation) -> bool {
-        self.statements
-            .iter()
-            .any(|stmt| stmt.operation == operation && stmt.has_where)
+        let mut saw_operation = false;
+
+        for stmt in self.statements.iter().filter(|s| s.operation == operation) {
+            saw_operation = true;
+            if !stmt.has_where {
+                return false;
+            }
+        }
+
+        saw_operation
     }
 
     /// Return all UPDATE/DELETE operations that are missing a WHERE clause.
