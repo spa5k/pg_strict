@@ -20,16 +20,12 @@ pg_strict currently enforces two safety rules:
 When enabled, the corresponding statement type must include a `WHERE` clause.
 
 ```sql
--- Blocked (affects all rows)
 UPDATE users SET status = 'inactive';
 
--- Allowed (targets specific rows)
 UPDATE users SET status = 'inactive' WHERE last_login < '2024-01-01';
 
--- Blocked (deletes all rows)
 DELETE FROM sessions;
 
--- Allowed (targets specific rows)
 DELETE FROM sessions WHERE expired_at < NOW();
 ```
 
@@ -108,14 +104,11 @@ pg_strict uses standard PostgreSQL GUCs, so it works well with `SET`, `SET LOCAL
 ### Session-Level Configuration
 
 ```sql
--- Warn only
 SET pg_strict.require_where_on_update = 'warn';
 
--- Strict blocking
 SET pg_strict.require_where_on_update = 'on';
 SET pg_strict.require_where_on_delete = 'on';
 
--- Disable
 SET pg_strict.require_where_on_update = 'off';
 ```
 
@@ -133,11 +126,9 @@ COMMIT;
 ### Database and Role Defaults
 
 ```sql
--- Database-wide default
 ALTER DATABASE postgres SET pg_strict.require_where_on_update = 'on';
 ALTER DATABASE postgres SET pg_strict.require_where_on_delete = 'on';
 
--- Per-role configuration
 ALTER ROLE app_service SET pg_strict.require_where_on_update = 'on';
 ALTER ROLE app_service SET pg_strict.require_where_on_delete = 'on';
 
@@ -189,29 +180,6 @@ SELECT pg_strict_validate_update(
 - `pg_strict_disable_delete() -> boolean`
 - `pg_strict_warn_update() -> boolean`
 - `pg_strict_warn_delete() -> boolean`
-
-## Behavior Notes
-
-- Enforcement happens at parse/analyze time using the analyzed `Query` tree.
-- `warn` mode will emit a PostgreSQL warning and allow the statement.
-- `on` mode will raise an error before execution.
-- GUC changes apply to new statements in the current session. `SET LOCAL` applies only within the current transaction.
-- Internal unsafe code is minimized and concentrated around PostgreSQL hooks and query-tree inspection, with `pgrx::list::List` used to avoid manual `pg_sys::List` layout walking where possible.
-
-## PlanetScale Parity Notes
-
-This project is inspired by PlanetScale's hosted `pg_strict` extension. Based on their public documentation, we appear to have strong user-visible parity for the currently documented features:
-
-- Same two settings (`require_where_on_update`, `require_where_on_delete`)
-- Same three modes (`off`, `warn`, `on`)
-- Parse/analyze-time enforcement
-- Standard PostgreSQL configuration patterns (`SET`, `SET LOCAL`, `ALTER ROLE ... SET`, `ALTER DATABASE ... SET`)
-
-Important differences to keep in mind:
-
-- PlanetScale runs inside a managed environment and may have additional internal safeguards that are not visible from documentation alone.
-- Hook-based extensions can interact in subtle ways when multiple extensions install parse/analyze hooks.
-- PlanetScale explicitly notes that configuration changes apply to new connections. In standard PostgreSQL, GUC changes typically take effect immediately for new statements within the current session, while role/database defaults apply at session start.
 
 ## Limitations
 

@@ -9,7 +9,6 @@ type PostParseAnalyzeHook = unsafe extern "C-unwind" fn(
 );
 static mut PREV_POST_PARSE_ANALYZE_HOOK: Option<PostParseAnalyzeHook> = None;
 
-/// Generate an enforcement message.
 fn generate_violation_message(operation: Operation) -> String {
     format!(
         "pg_strict: {} statement without WHERE clause detected. This operation would affect all rows in the table.",
@@ -17,7 +16,6 @@ fn generate_violation_message(operation: Operation) -> String {
     )
 }
 
-/// Extract operation/WHERE information directly from the analyzed Query tree.
 unsafe fn analyzed_query_operation(query: *mut pg_sys::Query) -> Option<(Operation, bool)> {
     if query.is_null() {
         return None;
@@ -43,7 +41,6 @@ unsafe fn analyzed_query_operation(query: *mut pg_sys::Query) -> Option<(Operati
 unsafe fn check_query_strictness_from_query(query: *mut pg_sys::Query) {
     let (update_mode, delete_mode) = current_modes();
 
-    // Fast-path: nothing enabled.
     if update_mode == StrictMode::Off && delete_mode == StrictMode::Off {
         return;
     }
@@ -83,7 +80,6 @@ unsafe extern "C-unwind" fn pg_strict_post_parse_analyze_hook(
     unsafe { check_query_strictness_from_query(query) };
 }
 
-/// Register the parse/analyze hook.
 pub fn install_hooks() {
     unsafe {
         PREV_POST_PARSE_ANALYZE_HOOK = pg_sys::post_parse_analyze_hook;
@@ -91,7 +87,6 @@ pub fn install_hooks() {
     }
 }
 
-/// Restore the previous parse/analyze hook.
 pub fn uninstall_hooks() {
     unsafe {
         pg_sys::post_parse_analyze_hook = PREV_POST_PARSE_ANALYZE_HOOK;

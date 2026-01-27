@@ -13,7 +13,6 @@ static mut REQUIRE_WHERE_ON_UPDATE_MODE: Option<GucSetting<StrictMode>> = None;
 #[allow(non_upper_case_globals)]
 static mut REQUIRE_WHERE_ON_DELETE_MODE: Option<GucSetting<StrictMode>> = None;
 
-/// Register pg_strict GUCs.
 pub fn init_gucs() {
     unsafe {
         REQUIRE_WHERE_ON_UPDATE_MODE = Some(GucSetting::<StrictMode>::new(StrictMode::Off));
@@ -43,7 +42,6 @@ pub fn init_gucs() {
     }
 }
 
-/// Get current modes for UPDATE and DELETE checks.
 #[allow(static_mut_refs)]
 pub fn current_modes() -> (StrictMode, StrictMode) {
     let update_mode = unsafe {
@@ -61,7 +59,6 @@ pub fn current_modes() -> (StrictMode, StrictMode) {
     (update_mode, delete_mode)
 }
 
-/// Convert a mode to its GUC string representation.
 pub fn mode_to_str(mode: StrictMode) -> &'static str {
     match mode {
         StrictMode::Off => "off",
