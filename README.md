@@ -14,7 +14,7 @@ pg_strict automatically intercepts and blocks or warns about dangerous SQL state
 - Validation functions for manual query checking
 - Helper functions to manage configuration
 - Per-role configuration support via ALTER ROLE SET
-- Supports PostgreSQL versions 13 through 16
+- Supports PostgreSQL versions 15 through 18
 
 ## Installation
 
@@ -22,7 +22,7 @@ pg_strict automatically intercepts and blocks or warns about dangerous SQL state
 
 - Rust toolchain (nightly)
 - cargo-pgrx 0.16.1
-- PostgreSQL 13-16 development headers
+- libclang and standard PostgreSQL build dependencies (cargo-pgrx can manage Postgres itself)
 
 ### Building from Source
 
@@ -31,16 +31,26 @@ pg_strict automatically intercepts and blocks or warns about dangerous SQL state
    cargo install cargo-pgrx --version 0.16.1 --locked
    ```
 
-2. Initialize pgrx with your PostgreSQL installation:
+2. Initialize pgrx-managed PostgreSQL installations:
    ```bash
-   cargo pgrx init --pg16 $(pg_config)
+   cargo pgrx init
    ```
 
 3. Build the extension:
    ```bash
    export BINDGEN_EXTRA_CLANG_ARGS="-isystem $(xcrun --sdk macosx --show-sdk-path)/usr/include"
-   cargo build --no-default-features --features pg16
+   cargo build --no-default-features --features pg15
    ```
+
+### Testing Across Supported Versions (PG15+)
+
+Run the test matrix with pgrx-managed Postgres versions:
+
+```bash
+for v in pg15 pg16 pg17 pg18; do
+  cargo pgrx test --no-default-features --features $v
+done
+```
 
 ### Installing into PostgreSQL
 

@@ -20,29 +20,37 @@ static mut REQUIRE_WHERE_ON_UPDATE_MODE: Option<GucSetting<StrictMode>> = None;
 #[allow(non_upper_case_globals)]
 static mut REQUIRE_WHERE_ON_DELETE_MODE: Option<GucSetting<StrictMode>> = None;
 
+type ProcessUtilityHook = unsafe extern "C-unwind" fn(
+    *mut pg_sys::PlannedStmt,
+    *const ::std::os::raw::c_char,
+    bool,
+    ::std::os::raw::c_uint,
+    *mut pg_sys::ParamListInfoData,
+    *mut pg_sys::QueryEnvironment,
+    *mut pg_sys::_DestReceiver,
+    *mut pg_sys::QueryCompletion,
+);
+
+#[cfg(feature = "pg18")]
+type ExecutorRunHook = unsafe extern "C-unwind" fn(
+    *mut pg_sys::QueryDesc,
+    i32,
+    u64,
+);
+
+#[cfg(not(feature = "pg18"))]
+type ExecutorRunHook = unsafe extern "C-unwind" fn(
+    *mut pg_sys::QueryDesc,
+    i32,
+    u64,
+    bool,
+);
+
 // Original process utility hook
-static mut PREV_PROCESS_UTILITY_HOOK: Option<
-    unsafe extern "C-unwind" fn(
-        *mut pg_sys::PlannedStmt,
-        *const ::std::os::raw::c_char,
-        bool,
-        ::std::os::raw::c_uint,
-        *mut pg_sys::ParamListInfoData,
-        *mut pg_sys::QueryEnvironment,
-        *mut pg_sys::_DestReceiver,
-        *mut pg_sys::QueryCompletion,
-    ),
-> = None;
+static mut PREV_PROCESS_UTILITY_HOOK: Option<ProcessUtilityHook> = None;
 
 // Original executor run hook - this is what we need for DML interception
-static mut PREV_EXECUTOR_RUN_HOOK: Option<
-    unsafe extern "C-unwind" fn(
-        *mut pg_sys::QueryDesc,
-        i32,
-        u64,
-        bool,
-),
-> = None;
+static mut PREV_EXECUTOR_RUN_HOOK: Option<ExecutorRunHook> = None;
 
 /// Query analysis using SQL AST parsing
 struct QueryAnalyzer {
@@ -55,13 +63,7 @@ impl QueryAnalyzer {
 
         match Parser::parse_sql(&dialect, query_string) {
             Ok(statements) => Ok(Self { statements }),
-            Err(_e) => {
-                // If parsing fails, silently return empty statements
-                // This allows the extension to work even if the query uses unsupported syntax
-                Ok(Self {
-                    statements: Vec::new(),
-                })
-            }
+            Err(_e) => Err(Box::new(pgrx::PgSqlErrorCode::ERRCODE_WARNING)),
         }
     }
 
@@ -81,16 +83,28 @@ impl QueryAnalyzer {
         false
     }
 
-    /// Extract the statement type from the query
-    fn get_statement_type(&self) -> Option<&'static str> {
+    /// Return all UPDATE/DELETE operations that are missing a WHERE clause.
+    fn missing_where_operations(&self) -> Vec<&'static str> {
+        let mut missing = Vec::new();
         for stmt in &self.statements {
             match stmt {
-                Statement::Update { .. } => return Some("UPDATE"),
-                Statement::Delete { .. } => return Some("DELETE"),
-                _ => continue,
+                Statement::Update { selection, .. } if selection.is_none() => {
+                    missing.push("UPDATE");
+                }
+                Statement::Delete { selection, .. } if selection.is_none() => {
+                    missing.push("DELETE");
+                }
+                _ => {}
             }
         }
-        None
+        missing
+    }
+
+    /// Returns true if the query contains any UPDATE/DELETE statements.
+    fn contains_dml(&self) -> bool {
+        self.statements.iter().any(|stmt| {
+            matches!(stmt, Statement::Update { .. } | Statement::Delete { .. })
+        })
     }
 }
 
@@ -102,56 +116,69 @@ fn generate_violation_message(operation: &str) -> String {
     )
 }
 
+fn current_modes() -> (StrictMode, StrictMode) {
+    let update_mode = unsafe {
+        REQUIRE_WHERE_ON_UPDATE_MODE
+            .as_ref()
+            .map(|g| g.get())
+            .unwrap_or(StrictMode::Off)
+    };
+    let delete_mode = unsafe {
+        REQUIRE_WHERE_ON_DELETE_MODE
+            .as_ref()
+            .map(|g| g.get())
+            .unwrap_or(StrictMode::Off)
+    };
+    (update_mode, delete_mode)
+}
+
+/// Analyze violations without emitting errors/warnings (useful for tests).
+fn analyze_missing_where_operations(query_string: &str) -> Vec<&'static str> {
+    match QueryAnalyzer::new(query_string) {
+        Ok(analyzer) => analyzer.missing_where_operations(),
+        Err(_) => Vec::new(),
+    }
+}
+
 /// Check if the query violates pg_strict rules
 fn check_query_strictness(query_string: &str) {
+    let (update_mode, delete_mode) = current_modes();
+
     let analyzer = match QueryAnalyzer::new(query_string) {
         Ok(a) => a,
-        Err(_) => return, // Parse error, allow query to proceed
+        Err(_) => {
+            // If we cannot parse a DML statement while strict modes are enabled,
+            // warn so operators know enforcement may be incomplete.
+            if update_mode != StrictMode::Off || delete_mode != StrictMode::Off {
+                pgrx::warning!(
+                    "pg_strict: could not parse query text; strict enforcement may be bypassed for this statement."
+                );
+            }
+            return;
+        }
     };
 
-    if let Some(stmt_type) = analyzer.get_statement_type() {
-        // Get the current mode for this operation
-        let (mode, operation_name) = unsafe {
-            match stmt_type {
-                "UPDATE" => (
-                    REQUIRE_WHERE_ON_UPDATE_MODE
-                        .as_ref()
-                        .map(|g| g.get())
-                        .unwrap_or(StrictMode::Off),
-                    "UPDATE",
-                ),
-                "DELETE" => (
-                    REQUIRE_WHERE_ON_DELETE_MODE
-                        .as_ref()
-                        .map(|g| g.get())
-                        .unwrap_or(StrictMode::Off),
-                    "DELETE",
-                ),
-                _ => return,
-            }
+    if (update_mode == StrictMode::Off && delete_mode == StrictMode::Off) || !analyzer.contains_dml() {
+        return;
+    }
+
+    // Enforce every violating statement, not just the first DML statement type.
+    for operation in analyzer.missing_where_operations() {
+        let mode = match operation {
+            "UPDATE" => update_mode,
+            "DELETE" => delete_mode,
+            _ => StrictMode::Off,
         };
 
         if mode == StrictMode::Off {
-            return; // Disabled, allow the query
+            continue;
         }
 
-        // Check if WHERE clause is present
-        if !analyzer.has_where_clause(stmt_type) {
-            let message = generate_violation_message(operation_name);
-
-            match mode {
-                StrictMode::On => {
-                    // Block the query
-                    pgrx::error!("{}", message);
-                }
-                StrictMode::Warn => {
-                    // Log a warning but allow
-                    pgrx::warning!("{}", message);
-                }
-                StrictMode::Off => {
-                    // Already handled above
-                }
-            }
+        let message = generate_violation_message(operation);
+        match mode {
+            StrictMode::On => pgrx::error!("{}", message),
+            StrictMode::Warn => pgrx::warning!("{}", message),
+            StrictMode::Off => {}
         }
     }
 }
@@ -196,6 +223,35 @@ unsafe extern "C-unwind" fn pg_strict_process_utility_hook(
 
 /// Executor run hook - intercepts DML queries (UPDATE/DELETE)
 #[pg_guard]
+#[cfg(feature = "pg18")]
+unsafe extern "C-unwind" fn pg_strict_executor_run_hook(
+    query_desc: *mut pg_sys::QueryDesc,
+    direction: i32,
+    count: u64,
+) {
+    let query_str = if !query_desc.is_null() {
+        let source_text = (*query_desc).sourceText;
+        if !source_text.is_null() {
+            CStr::from_ptr(source_text).to_string_lossy().to_string()
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
+    check_query_strictness(&query_str);
+
+    if let Some(prev_hook) = PREV_EXECUTOR_RUN_HOOK {
+        prev_hook(query_desc, direction, count);
+    } else {
+        pg_sys::standard_ExecutorRun(query_desc, direction, count);
+    }
+}
+
+/// Executor run hook - intercepts DML queries (UPDATE/DELETE)
+#[pg_guard]
+#[cfg(not(feature = "pg18"))]
 unsafe extern "C-unwind" fn pg_strict_executor_run_hook(
     query_desc: *mut pg_sys::QueryDesc,
     direction: i32,
@@ -349,18 +405,7 @@ fn pg_strict_config() -> TableIterator<
         name!(description, String),
     ),
 > {
-    let update_mode = unsafe {
-        REQUIRE_WHERE_ON_UPDATE_MODE
-            .as_ref()
-            .map(|g| g.get())
-            .unwrap_or(StrictMode::Off)
-    };
-    let delete_mode = unsafe {
-        REQUIRE_WHERE_ON_DELETE_MODE
-            .as_ref()
-            .map(|g| g.get())
-            .unwrap_or(StrictMode::Off)
-    };
+    let (update_mode, delete_mode) = current_modes();
 
     let mode_to_str = |mode: StrictMode| -> &'static str {
         match mode {
@@ -619,6 +664,67 @@ mod tests {
             "delete from users",
             "DELETE"
         ));
+    }
+
+    #[pg_test]
+    fn test_multi_statement_detects_each_violation() {
+        let violations = analyze_missing_where_operations(
+            "UPDATE users SET active = false; UPDATE users SET active = true WHERE id = 1;",
+        );
+        assert_eq!(violations, vec!["UPDATE"]);
+
+        let violations = analyze_missing_where_operations(
+            "DELETE FROM sessions; DELETE FROM sessions WHERE id = 1;",
+        );
+        assert_eq!(violations, vec!["DELETE"]);
+    }
+
+    #[pg_test]
+    fn test_multi_statement_multiple_violations_are_all_reported() {
+        let violations = analyze_missing_where_operations(
+            "UPDATE users SET active = false; DELETE FROM sessions;",
+        );
+        assert_eq!(violations, vec!["UPDATE", "DELETE"]);
+    }
+
+    #[pg_test]
+    fn test_multi_statement_safe_then_unsafe_is_still_flagged() {
+        let violations = analyze_missing_where_operations(
+            "UPDATE users SET active = true WHERE id = 1; UPDATE users SET active = false;",
+        );
+        assert_eq!(violations, vec!["UPDATE"]);
+    }
+
+    #[pg_test]
+    fn test_non_dml_statements_do_not_trigger_violations() {
+        let violations = analyze_missing_where_operations(
+            "SELECT 1; CREATE TABLE t(id int); ALTER TABLE t ADD COLUMN x int;",
+        );
+        assert!(violations.is_empty());
+    }
+
+    #[pg_test]
+    fn test_delete_using_is_treated_as_having_where() {
+        let violations = analyze_missing_where_operations(
+            "DELETE FROM users USING accounts WHERE users.account_id = accounts.id;",
+        );
+        assert!(violations.is_empty());
+    }
+
+    #[pg_test]
+    fn test_update_with_from_and_where_is_safe() {
+        let violations = analyze_missing_where_operations(
+            "UPDATE users SET active = false FROM accounts WHERE users.account_id = accounts.id;",
+        );
+        assert!(violations.is_empty());
+    }
+
+    #[pg_test]
+    fn test_update_with_from_without_where_is_flagged() {
+        let violations = analyze_missing_where_operations(
+            "UPDATE users SET active = false FROM accounts;",
+        );
+        assert_eq!(violations, vec!["UPDATE"]);
     }
 }
 
