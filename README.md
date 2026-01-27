@@ -4,11 +4,11 @@ A PostgreSQL extension that prevents accidental mass UPDATE and DELETE operation
 
 ## Overview
 
-pg_strict automatically intercepts and blocks or warns about dangerous SQL statements that could affect all rows in a table. This implementation is built using [pgrx](https://github.com/pgcentralfoundation/pgrx), a framework for developing PostgreSQL extensions in Rust.
+pg_strict intercepts queries at parse/analyze time and blocks or warns about dangerous SQL statements that could affect all rows in a table. This implementation is built using [pgrx](https://github.com/pgcentralfoundation/pgrx), a framework for developing PostgreSQL extensions in Rust.
 
 ## Features
 
-- **Automatic DML Interception**: UPDATE and DELETE statements are automatically checked at execution time
+- **Automatic DML Interception**: UPDATE and DELETE statements are checked at parse/analyze time
 - GUC configuration variables for runtime settings
 - Three modes: off, warn, and on
 - Validation functions for manual query checking
@@ -439,8 +439,8 @@ pg_strict uses **sqlparser-rs**, a pure Rust SQL parser that supports PostgreSQL
 
 ### Current Limitations
 
-1. **PostgreSQL extensions**: Custom PostgreSQL functions or syntax not recognized by sqlparser may fall back silently (allowed)
-2. **Very large queries**: AST parsing has higher overhead than text matching (typically < 100µs)
+1. **Query-tree scope**: Enforcement is based on the analyzed Query tree and focuses on top-level UPDATE/DELETE statements
+2. **Hook behavior**: Like other hook-based extensions, coverage depends on PostgreSQL hook semantics and extension ordering
 
 ### Planned Enhancements
 
@@ -453,12 +453,12 @@ Future versions may include:
 
 ### 0.1.0 (Initial Release)
 
-- Automatic DML interception via ExecutorRun_hook
-- AST-based query parsing using sqlparser-rs
+- Automatic DML interception via post_parse_analyze_hook
+- Parsing and analysis via PostgreSQL's internal parser
 - GUC configuration variables (off/warn/on modes)
 - Validation functions for UPDATE and DELETE queries
 - Helper functions for configuration management
-- Support for PostgreSQL 13-16
+- Support for PostgreSQL 15-18
 
 ## License
 
