@@ -196,6 +196,7 @@ SELECT pg_strict_validate_update(
 - `warn` mode will emit a PostgreSQL warning and allow the statement.
 - `on` mode will raise an error before execution.
 - GUC changes apply to new statements in the current session. `SET LOCAL` applies only within the current transaction.
+- Internal unsafe code is minimized and concentrated around PostgreSQL hooks and query-tree inspection, with `pgrx::list::List` used to avoid manual `pg_sys::List` layout walking where possible.
 
 ## PlanetScale Parity Notes
 

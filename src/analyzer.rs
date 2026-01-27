@@ -1,8 +1,11 @@
 use pgrx::PgSqlErrorCode;
 use pgrx::PgTryBuilder;
+use pgrx::list::List;
 use pgrx::memcx;
+use pgrx::memcx::MemCx;
 use pgrx::pg_sys;
 use std::ffi::CString;
+use std::ffi::c_void;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operation {
@@ -41,9 +44,9 @@ impl QueryAnalyzer {
             CString::new(query_string).map_err(|_| Box::new(PgSqlErrorCode::ERRCODE_WARNING))?;
 
         let statements = PgTryBuilder::new(|| {
-            let statements = memcx::current_context(|_mcx| unsafe {
+            let statements = memcx::current_context(|mcx| unsafe {
                 let raw_list = pg_sys::pg_parse_query(c_query.as_ptr());
-                collect_parsed_statements(raw_list)
+                collect_parsed_statements(raw_list, mcx)
             });
             Ok(statements)
         })
@@ -81,33 +84,32 @@ impl QueryAnalyzer {
     }
 }
 
-unsafe fn collect_parsed_statements(raw_list: *mut pg_sys::List) -> Vec<ParsedStmt> {
-    if raw_list.is_null() {
+fn collect_parsed_statements(raw_list: *mut pg_sys::List, memcx: &MemCx<'_>) -> Vec<ParsedStmt> {
+    // SAFETY: `pg_parse_query` returns a pointer list allocated in the current
+    // memory context. We downcast it as a generic pointer list (`T_List`) and
+    // only read from it within the same context.
+    let list = unsafe { List::<*mut c_void>::downcast_ptr_in_memcx(raw_list, memcx) };
+    let Some(list) = list else {
         return Vec::new();
-    }
+    };
 
-    let list = unsafe { &*raw_list };
-    let len = list.length.max(0) as usize;
-    if len == 0 || list.elements.is_null() {
-        return Vec::new();
-    }
-
-    let cells = unsafe { std::slice::from_raw_parts(list.elements, len) };
     let mut parsed = Vec::new();
-
-    for cell in cells {
-        // The parser returns a pointer list of RawStmt nodes.
-        let raw_stmt = unsafe { cell.ptr_value as *mut pg_sys::RawStmt };
+    for raw_ptr in list.iter() {
+        // Each element is expected to be a RawStmt pointer from the parser.
+        let raw_stmt = *raw_ptr as *mut pg_sys::RawStmt;
         if raw_stmt.is_null() {
             continue;
         }
 
+        // SAFETY: `raw_stmt` comes from Postgres' parser. We only read fields
+        // after checking for null pointers at each step.
         let stmt = unsafe { (*raw_stmt).stmt };
         if stmt.is_null() {
             continue;
         }
 
-        match unsafe { (*stmt).type_ } {
+        let tag = unsafe { (*stmt).type_ };
+        match tag {
             pg_sys::NodeTag::T_UpdateStmt => {
                 let update = stmt as *mut pg_sys::UpdateStmt;
                 let has_where = unsafe { !(*update).whereClause.is_null() };
