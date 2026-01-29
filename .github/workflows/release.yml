@@ -188,49 +188,84 @@ jobs:
         run: |
           cat > dist/release-notes.md << 'EOF'
           # Installation
-
+          
           ## Quick Install (Linux x86_64)
-
+          
           Download and install the pre-built binary for your PostgreSQL version:
-
+          
+          ### PostgreSQL 13
           ```bash
-          # Set your PostgreSQL version (13, 14, 15, 16, 17, or 18)
-          PG_VERSION=15
-
-          # Download the package
-          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg${PG_VERSION}-linux-x86_64.tar.gz
-
-          # Extract and install
-          tar -xzf pg_strict-${VERSION}-pg${PG_VERSION}-linux-x86_64.tar.gz
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg13-linux-x86_64.tar.gz
+          tar -xzf pg_strict-${VERSION}-pg13-linux-x86_64.tar.gz
           sudo cp pg_strict.so $(pg_config --libdir)/
           sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
           ```
-
+          
+          ### PostgreSQL 14
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg14-linux-x86_64.tar.gz
+          tar -xzf pg_strict-${VERSION}-pg14-linux-x86_64.tar.gz
+          sudo cp pg_strict.so $(pg_config --libdir)/
+          sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
+          ```
+          
+          ### PostgreSQL 15
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg15-linux-x86_64.tar.gz
+          tar -xzf pg_strict-${VERSION}-pg15-linux-x86_64.tar.gz
+          sudo cp pg_strict.so $(pg_config --libdir)/
+          sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
+          ```
+          
+          ### PostgreSQL 16
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg16-linux-x86_64.tar.gz
+          tar -xzf pg_strict-${VERSION}-pg16-linux-x86_64.tar.gz
+          sudo cp pg_strict.so $(pg_config --libdir)/
+          sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
+          ```
+          
+          ### PostgreSQL 17
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg17-linux-x86_64.tar.gz
+          tar -xzf pg_strict-${VERSION}-pg17-linux-x86_64.tar.gz
+          sudo cp pg_strict.so $(pg_config --libdir)/
+          sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
+          ```
+          
+          ### PostgreSQL 18
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg18-linux-x86_64.tar.gz
+          tar -xzf pg_strict-${VERSION}-pg18-linux-x86_64.tar.gz
+          sudo cp pg_strict.so $(pg_config --libdir)/
+          sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
+          ```
+          
           Then enable the extension in PostgreSQL:
-
+          
           ```sql
           CREATE EXTENSION pg_strict;
           ```
-
+          
           ## Build from Source
-
+          
           See the [README](https://github.com/${{ github.repository }}#installation) for detailed instructions on building from source.
-
+          
           ## Verify Installation
-
+          
           ```sql
           SELECT pg_strict_version();
           SELECT * FROM pg_strict_config();
           ```
-
+          
           ## What's Supported
-
+          
           - PostgreSQL versions: 13, 14, 15, 16, 17, 18
           - Platform: Linux x86_64
           - Architecture: amd64
-
+          
           ## Documentation
-
+          
           Full documentation available at: https://github.com/${{ github.repository }}
           EOF
 
