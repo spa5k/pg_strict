@@ -23,6 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - pg_major: "13"
+            pg_feature: "pg13"
+          - pg_major: "14"
+            pg_feature: "pg14"
           - pg_major: "15"
             pg_feature: "pg15"
           - pg_major: "16"
@@ -132,6 +136,102 @@ jobs:
             "pg_strict--${VERSION}.sql" \
             pg_strict.so
 
+      - name: Verify build artifacts
+        run: |
+          echo "Verifying build artifacts for pg${PG_MAJOR}..."
+          
+          # Check that required files exist
+          if [ ! -f "dist/pg${PG_MAJOR}/extension/pg_strict.control" ]; then
+            echo "ERROR: pg_strict.control not found"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/pg${PG_MAJOR}/extension/pg_strict--${VERSION}.sql" ]; then
+            echo "ERROR: pg_strict--${VERSION}.sql not found"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/pg${PG_MAJOR}/extension/pg_strict.so" ]; then
+            echo "ERROR: pg_strict.so not found"
+            exit 1
+          fi
+          
+          # Check tarball was created
+          if [ ! -f "dist/pg_strict-${VERSION}-pg${PG_MAJOR}-linux-x86_64.tar.gz" ]; then
+            echo "ERROR: tarball not found"
+            exit 1
+          fi
+          
+          # Verify tarball contents
+          tar -tzf "dist/pg_strict-${VERSION}-pg${PG_MAJOR}-linux-x86_64.tar.gz" | tee /tmp/tar-contents.txt
+          
+          if ! grep -q "pg_strict.control" /tmp/tar-contents.txt; then
+            echo "ERROR: pg_strict.control missing from tarball"
+            exit 1
+          fi
+          
+          if ! grep -q "pg_strict--${VERSION}.sql" /tmp/tar-contents.txt; then
+            echo "ERROR: pg_strict--${VERSION}.sql missing from tarball"
+            exit 1
+          fi
+          
+          if ! grep -q "pg_strict.so" /tmp/tar-contents.txt; then
+            echo "ERROR: pg_strict.so missing from tarball"
+            exit 1
+          fi
+          
+          echo "✅ All artifacts verified successfully for pg${PG_MAJOR}"
+
+      - name: Generate release notes
+        run: |
+          cat > dist/release-notes.md << 'EOF'
+          # Installation
+
+          ## Quick Install (Linux x86_64)
+
+          Download and install the pre-built binary for your PostgreSQL version:
+
+          ```bash
+          # Set your PostgreSQL version (13, 14, 15, 16, 17, or 18)
+          PG_VERSION=15
+
+          # Download the package
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/pg_strict-${VERSION}-pg${PG_VERSION}-linux-x86_64.tar.gz
+
+          # Extract and install
+          tar -xzf pg_strict-${VERSION}-pg${PG_VERSION}-linux-x86_64.tar.gz
+          sudo cp pg_strict.so $(pg_config --libdir)/
+          sudo cp pg_strict.control pg_strict--${VERSION}.sql $(pg_config --sharedir)/extension/
+          ```
+
+          Then enable the extension in PostgreSQL:
+
+          ```sql
+          CREATE EXTENSION pg_strict;
+          ```
+
+          ## Build from Source
+
+          See the [README](https://github.com/${{ github.repository }}#installation) for detailed instructions on building from source.
+
+          ## Verify Installation
+
+          ```sql
+          SELECT pg_strict_version();
+          SELECT * FROM pg_strict_config();
+          ```
+
+          ## What's Supported
+
+          - PostgreSQL versions: 13, 14, 15, 16, 17, 18
+          - Platform: Linux x86_64
+          - Architecture: amd64
+
+          ## Documentation
+
+          Full documentation available at: https://github.com/${{ github.repository }}
+          EOF
+
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         if: ${{ github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') || inputs.version != '' }}
@@ -139,3 +239,4 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           target_commitish: ${{ github.sha }}
           files: dist/pg_strict-${{ env.VERSION }}-pg${{ env.PG_MAJOR }}-linux-x86_64.tar.gz
+          body_path: dist/release-notes.md
