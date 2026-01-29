@@ -40,10 +40,10 @@ jobs:
       PG_FEATURE: ${{ matrix.pg_feature }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Cache cargo-pgrx + pgrx toolchains
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin
@@ -78,7 +78,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
 
       - name: Cache Rust build artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2.8.1
 
       - name: Install cargo-pgrx
         run: |
