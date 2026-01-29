@@ -6,7 +6,7 @@ This extension is implemented in Rust using [pgrx](https://github.com/pgcentralf
 
 ## Status
 
-- Version: `0.1.0`
+- Version: `1.0.0`
 - PostgreSQL: 13, 14, 15, 16, 17, 18
 - Enforcement stage: parse/analyze time
 
@@ -43,35 +43,35 @@ Each setting supports three modes:
 
 ### Option 1: Install from Pre-built Binaries (Recommended)
 
-Pre-built binaries are available for Linux (x86_64) on the [Releases](https://github.com/your-org/pg_strict/releases) page.
+Pre-built binaries are available for Linux (x86_64) on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
 
 1. Download the appropriate package for your PostgreSQL version:
 
 ```bash
 # For PostgreSQL 13
-wget https://github.com/your-org/pg_strict/releases/download/v0.1.0/pg_strict-0.1.0-pg13-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg13-linux-x86_64.tar.gz
 
 # For PostgreSQL 14
-wget https://github.com/your-org/pg_strict/releases/download/v0.1.0/pg_strict-0.1.0-pg14-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg14-linux-x86_64.tar.gz
 
 # For PostgreSQL 15
-wget https://github.com/your-org/pg_strict/releases/download/v0.1.0/pg_strict-0.1.0-pg15-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg15-linux-x86_64.tar.gz
 
 # For PostgreSQL 16
-wget https://github.com/your-org/pg_strict/releases/download/v0.1.0/pg_strict-0.1.0-pg16-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg16-linux-x86_64.tar.gz
 
 # For PostgreSQL 17
-wget https://github.com/your-org/pg_strict/releases/download/v0.1.0/pg_strict-0.1.0-pg17-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg17-linux-x86_64.tar.gz
 
 # For PostgreSQL 18
-wget https://github.com/your-org/pg_strict/releases/download/v0.1.0/pg_strict-0.1.0-pg18-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg18-linux-x86_64.tar.gz
 ```
 
 2. Extract and install:
 
 ```bash
 # Extract the archive
-tar -xzf pg_strict-0.1.0-pg15-linux-x86_64.tar.gz
+tar -xzf pg_strict-1.0.0-pg15-linux-x86_64.tar.gz
 
 # Copy files to PostgreSQL directories
 PG_LIB=$(pg_config --libdir)
@@ -79,7 +79,7 @@ PG_SHARE=$(pg_config --sharedir)
 
 sudo cp pg_strict.so "$PG_LIB/"
 sudo cp pg_strict.control "$PG_SHARE/extension/"
-sudo cp pg_strict--0.1.0.sql "$PG_SHARE/extension/"
+sudo cp pg_strict--1.0.0.sql "$PG_SHARE/extension/"
 ```
 
 3. Enable the extension:
@@ -113,6 +113,7 @@ cargo pgrx init
 3. Build the extension for your PostgreSQL version:
 
 **On Linux:**
+
 ```bash
 # For PostgreSQL 13
 cargo build --no-default-features --features pg13
@@ -134,6 +135,7 @@ cargo build --no-default-features --features pg18
 ```
 
 **On macOS:**
+
 ```bash
 export BINDGEN_EXTRA_CLANG_ARGS="-isystem $(xcrun --sdk macosx --show-sdk-path)/usr/include"
 cargo build --no-default-features --features pg15
@@ -153,7 +155,7 @@ sudo cp target/debug/libpg_strict.dylib "$PG_LIB/"
 
 # Control and SQL files (same for both platforms)
 sudo cp pg_strict.control "$PG_SHARE/extension/"
-sudo cp pg_strict--0.1.0.sql "$PG_SHARE/extension/"
+sudo cp pg_strict--1.0.0.sql "$PG_SHARE/extension/"
 ```
 
 5. Enable the extension:
