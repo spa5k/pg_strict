@@ -19,6 +19,8 @@ permissions:
 jobs:
   build-and-upload:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -240,3 +242,4 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: dist/pg_strict-${{ env.VERSION }}-pg${{ env.PG_MAJOR }}-linux-x86_64.tar.gz
           body_path: dist/release-notes.md
+          overwrite_files: true
