@@ -2,11 +2,21 @@ use crate::analyzer::Operation;
 use crate::guc::{StrictMode, current_modes};
 use pgrx::pg_guard;
 use pgrx::pg_sys;
+
+// PostgreSQL 14+ has JumbleState parameter, PG13 does not
+#[cfg(feature = "pg13")]
+type PostParseAnalyzeHook = unsafe extern "C-unwind" fn(
+    *mut pg_sys::ParseState,
+    *mut pg_sys::Query,
+);
+
+#[cfg(not(feature = "pg13"))]
 type PostParseAnalyzeHook = unsafe extern "C-unwind" fn(
     *mut pg_sys::ParseState,
     *mut pg_sys::Query,
     *mut pg_sys::JumbleState,
 );
+
 static mut PREV_POST_PARSE_ANALYZE_HOOK: Option<PostParseAnalyzeHook> = None;
 
 fn generate_violation_message(operation: Operation) -> String {
@@ -67,6 +77,20 @@ unsafe fn check_query_strictness_from_query(query: *mut pg_sys::Query) {
     }
 }
 
+#[cfg(feature = "pg13")]
+#[pg_guard]
+unsafe extern "C-unwind" fn pg_strict_post_parse_analyze_hook(
+    pstate: *mut pg_sys::ParseState,
+    query: *mut pg_sys::Query,
+) {
+    if let Some(prev_hook) = unsafe { PREV_POST_PARSE_ANALYZE_HOOK } {
+        unsafe { prev_hook(pstate, query) };
+    }
+
+    unsafe { check_query_strictness_from_query(query) };
+}
+
+#[cfg(not(feature = "pg13"))]
 #[pg_guard]
 unsafe extern "C-unwind" fn pg_strict_post_parse_analyze_hook(
     pstate: *mut pg_sys::ParseState,
