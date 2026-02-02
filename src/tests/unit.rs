@@ -1,9 +1,6 @@
-
-
-
 #[pg_test]
 fn test_pg_strict_version() {
-    assert_eq!("0.1.0", api::pg_strict_version());
+    assert_eq!("1.0.2", api::pg_strict_version());
 }
 
 #[pg_test]

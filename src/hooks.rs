@@ -5,10 +5,8 @@ use pgrx::pg_sys;
 
 // PostgreSQL 14+ has JumbleState parameter, PG13 does not
 #[cfg(feature = "pg13")]
-type PostParseAnalyzeHook = unsafe extern "C-unwind" fn(
-    *mut pg_sys::ParseState,
-    *mut pg_sys::Query,
-);
+type PostParseAnalyzeHook =
+    unsafe extern "C-unwind" fn(*mut pg_sys::ParseState, *mut pg_sys::Query);
 
 #[cfg(not(feature = "pg13"))]
 type PostParseAnalyzeHook = unsafe extern "C-unwind" fn(

@@ -6,7 +6,7 @@ const VALID_MODES: [&str; 3] = ["off", "warn", "on"];
 
 #[pg_extern]
 pub(crate) fn pg_strict_version() -> &'static str {
-    "0.1.0"
+    "1.0.2"
 }
 
 #[pg_extern]

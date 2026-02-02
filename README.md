@@ -4,9 +4,17 @@ pg_strict blocks dangerous `UPDATE` and `DELETE` statements before they run. It 
 
 This extension is implemented in Rust using [pgrx](https://github.com/pgcentralfoundation/pgrx) and enforces rules at PostgreSQL parse/analyze time via `post_parse_analyze_hook`.
 
+## Build Log / Background
+
+If you want the full story (what worked, what failed, and why the final approach uses `post_parse_analyze_hook`), read the build log:
+
+- [Recreating PlanetScale's pg_strict in Rust: A Build Log](https://saybackend.com/blog/recreating-planetscale-pg-strict-in-rust/)
+
+[![Recreating PlanetScale's pg_strict in Rust: A Build Log](assets/pg-strict-og.png)](https://saybackend.com/blog/recreating-planetscale-pg-strict-in-rust/)
+
 ## Status
 
-- Version: `1.0.0`
+- Version: see the [latest release](https://github.com/spa5k/pg_strict/releases/latest)
 - PostgreSQL: 13, 14, 15, 16, 17, 18
 - Enforcement stage: parse/analyze time
 
@@ -49,29 +57,29 @@ Pre-built binaries are available for Linux (x86_64) on the [Releases](https://gi
 
 ```bash
 # For PostgreSQL 13
-wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg13-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg13-linux-x86_64.tar.gz
 
 # For PostgreSQL 14
-wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg14-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg14-linux-x86_64.tar.gz
 
 # For PostgreSQL 15
-wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg15-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg15-linux-x86_64.tar.gz
 
 # For PostgreSQL 16
-wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg16-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg16-linux-x86_64.tar.gz
 
 # For PostgreSQL 17
-wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg17-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg17-linux-x86_64.tar.gz
 
 # For PostgreSQL 18
-wget https://github.com/spa5k/pg_strict/releases/download/v1.0.0/pg_strict-1.0.0-pg18-linux-x86_64.tar.gz
+wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg18-linux-x86_64.tar.gz
 ```
 
 2. Extract and install:
 
 ```bash
 # Extract the archive
-tar -xzf pg_strict-1.0.0-pg15-linux-x86_64.tar.gz
+tar -xzf pg_strict-pg15-linux-x86_64.tar.gz
 
 # Copy files to PostgreSQL directories
 PG_LIB=$(pg_config --libdir)
@@ -79,7 +87,7 @@ PG_SHARE=$(pg_config --sharedir)
 
 sudo cp pg_strict.so "$PG_LIB/"
 sudo cp pg_strict.control "$PG_SHARE/extension/"
-sudo cp pg_strict--1.0.0.sql "$PG_SHARE/extension/"
+sudo cp pg_strict--*.sql "$PG_SHARE/extension/"
 ```
 
 3. Enable the extension:
@@ -87,6 +95,8 @@ sudo cp pg_strict--1.0.0.sql "$PG_SHARE/extension/"
 ```sql
 CREATE EXTENSION pg_strict;
 ```
+
+![Create extension](assets/1-create-extension.png)
 
 ### Option 2: Build from Source
 
@@ -155,7 +165,7 @@ sudo cp target/debug/libpg_strict.dylib "$PG_LIB/"
 
 # Control and SQL files (same for both platforms)
 sudo cp pg_strict.control "$PG_SHARE/extension/"
-sudo cp pg_strict--1.0.0.sql "$PG_SHARE/extension/"
+sudo cp pg_strict--1.0.2.sql "$PG_SHARE/extension/"
 ```
 
 5. Enable the extension:
@@ -181,6 +191,8 @@ SELECT * FROM pg_strict_config();
 
 pg_strict uses standard PostgreSQL GUCs, so it works well with `SET`, `SET LOCAL`, `ALTER ROLE ... SET`, and `ALTER DATABASE ... SET`.
 
+![Config overview](assets/2-config.png)
+
 ### Session-Level Configuration
 
 ```sql
@@ -192,6 +204,8 @@ SET pg_strict.require_where_on_delete = 'on';
 SET pg_strict.require_where_on_update = 'off';
 ```
 
+![Setting warn config](assets/4-setting-warn-config.png)
+
 ### One-Off Overrides With SET LOCAL
 
 For intentional bulk operations, temporarily relax rules inside a transaction:
@@ -202,6 +216,8 @@ SET LOCAL pg_strict.require_where_on_delete = 'off';
 DELETE FROM temp_import_data;
 COMMIT;
 ```
+
+![Transaction turning off](assets/8-transaction-turning-off.png)
 
 ### Database and Role Defaults
 
@@ -218,6 +234,28 @@ ALTER ROLE migration_user SET pg_strict.require_where_on_delete = 'warn';
 ALTER ROLE dba_admin SET pg_strict.require_where_on_update = 'off';
 ALTER ROLE dba_admin SET pg_strict.require_where_on_delete = 'off';
 ```
+
+## Examples (Screenshots)
+
+### Table state (before)
+
+![Table state with rows](assets/3-table-state-with-rows.png)
+
+### Warn mode (unsafe queries are allowed, but logged)
+
+![Delete/update with warn](assets/5-delete-update-with-warn.png)
+
+### On mode (unsafe queries are blocked)
+
+![Setting on + update error](assets/6-setting-on-update-erroring-out.png)
+
+### Safe update with WHERE
+
+![Valid update query with where](assets/7-valid-update-query-with-where.png)
+
+### CTEs are supported (WHERE present in analyzed query)
+
+![CTEs with where](assets/9-ctes-with-where.png)
 
 ## API Reference
 
