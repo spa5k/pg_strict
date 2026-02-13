@@ -161,8 +161,8 @@ jobs:
           ## What's Supported
 
           - PostgreSQL versions: 13, 14, 15, 16, 17, 18
-          - Platform: Linux x86_64
-          - Architecture: amd64
+          - Platform: Linux
+          - Architectures: x86_64, aarch64
 
           ## Documentation
 
@@ -178,7 +178,7 @@ jobs:
           body_path: dist/release-notes.md
 
   build-and-upload:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.target.runner }}
     needs:
       - prepare
       - create-or-update-release
@@ -190,19 +190,80 @@ jobs:
         include:
           - pg_major: "13"
             pg_feature: "pg13"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "13"
+            pg_feature: "pg13"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
           - pg_major: "14"
             pg_feature: "pg14"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "14"
+            pg_feature: "pg14"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
           - pg_major: "15"
             pg_feature: "pg15"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "15"
+            pg_feature: "pg15"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
           - pg_major: "16"
             pg_feature: "pg16"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "16"
+            pg_feature: "pg16"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
           - pg_major: "17"
             pg_feature: "pg17"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "17"
+            pg_feature: "pg17"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
           - pg_major: "18"
             pg_feature: "pg18"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "18"
+            pg_feature: "pg18"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
     env:
       PG_MAJOR: ${{ matrix.pg_major }}
       PG_FEATURE: ${{ matrix.pg_feature }}
+      ARCH_SUFFIX: ${{ matrix.target.suffix }}
       VERSION: ${{ needs.prepare.outputs.version }}
       TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
     steps:
@@ -272,7 +333,7 @@ jobs:
           ls -la dist/pg${PG_MAJOR}/extension
 
           tar -C dist/pg${PG_MAJOR}/extension -czf \
-            "dist/pg_strict-pg${PG_MAJOR}-linux-x86_64.tar.gz" \
+            "dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz" \
             pg_strict.control \
             "pg_strict--${VERSION}.sql" \
             pg_strict.so
@@ -298,13 +359,13 @@ jobs:
           fi
 
           # Check tarball was created
-          if [ ! -f "dist/pg_strict-pg${PG_MAJOR}-linux-x86_64.tar.gz" ]; then
+          if [ ! -f "dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz" ]; then
             echo "ERROR: tarball not found"
             exit 1
           fi
 
           # Verify tarball contents
-          tar -tzf "dist/pg_strict-pg${PG_MAJOR}-linux-x86_64.tar.gz" | tee /tmp/tar-contents.txt
+          tar -tzf "dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz" | tee /tmp/tar-contents.txt
 
           if ! grep -q "pg_strict.control" /tmp/tar-contents.txt; then
             echo "ERROR: pg_strict.control missing from tarball"
@@ -329,5 +390,5 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           target_commitish: ${{ github.sha }}
-          files: dist/pg_strict-pg${{ env.PG_MAJOR }}-linux-x86_64.tar.gz
+          files: dist/pg_strict-pg${{ env.PG_MAJOR }}-${{ env.ARCH_SUFFIX }}.tar.gz
           overwrite_files: true

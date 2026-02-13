@@ -3,4 +3,4 @@ default_version = '1.0.2'
 module_pathname = 'pg_strict'
 relocatable = false
 superuser = true
-trusted = true
+trusted = false
