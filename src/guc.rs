@@ -68,5 +68,5 @@ pub fn mode_to_str(mode: StrictMode) -> &'static str {
 }
 
 fn cstr(bytes: &'static [u8]) -> &'static CStr {
-    unsafe { CStr::from_ptr(bytes.as_ptr() as *const i8) }
+    CStr::from_bytes_with_nul(bytes).expect("invalid C string literal")
 }
