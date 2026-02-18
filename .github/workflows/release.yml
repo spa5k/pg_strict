@@ -385,10 +385,11 @@ jobs:
           echo "✅ All artifacts verified successfully for pg${PG_MAJOR}"
 
       - name: Upload release asset
-        uses: softprops/action-gh-release@v2
         if: ${{ github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') || inputs.version != '' }}
-        with:
-          tag_name: ${{ env.TAG_NAME }}
-          target_commitish: ${{ github.sha }}
-          files: dist/pg_strict-pg${{ env.PG_MAJOR }}-${{ env.ARCH_SUFFIX }}.tar.gz
-          overwrite_files: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ASSET="dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz"
+          echo "Uploading ${ASSET} to ${TAG_NAME}"
+          gh release upload "${TAG_NAME}" "${ASSET}" --clobber --repo "${GITHUB_REPOSITORY}"
