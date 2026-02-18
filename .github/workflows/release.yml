@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Tag/version to release (e.g. v1.0.4)"
+        description: "Tag/version to release (e.g. v1.0.5)"
         required: false
         type: string
 
@@ -300,7 +300,17 @@ jobs:
             bison \
             libzstd-dev \
             curl \
-            ca-certificates
+            ca-certificates \
+            ruby \
+            ruby-dev
+
+      - name: Install fpm
+        run: |
+          if command -v fpm >/dev/null 2>&1; then
+            echo "fpm already present: $(fpm --version)"
+          else
+            sudo gem install --no-document fpm
+          fi
 
       - name: Setup Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
@@ -350,6 +360,70 @@ jobs:
             "pg_strict--${VERSION}.sql" \
             pg_strict.so
 
+          case "${ARCH_SUFFIX}" in
+            linux-x86_64)
+              RPM_ARCH="x86_64"
+              DEB_ARCH="amd64"
+              ;;
+            linux-aarch64)
+              RPM_ARCH="aarch64"
+              DEB_ARCH="arm64"
+              ;;
+            *)
+              echo "Unsupported ARCH_SUFFIX: ${ARCH_SUFFIX}"
+              exit 1
+              ;;
+          esac
+
+          RPM_ROOT="dist/pkgroot-rpm"
+          DEB_ROOT="dist/pkgroot-deb"
+          rm -rf "${RPM_ROOT}" "${DEB_ROOT}"
+
+          mkdir -p \
+            "${RPM_ROOT}/usr/pgsql-${PG_MAJOR}/lib" \
+            "${RPM_ROOT}/usr/pgsql-${PG_MAJOR}/share/extension" \
+            "${DEB_ROOT}/usr/lib/postgresql/${PG_MAJOR}/lib" \
+            "${DEB_ROOT}/usr/share/postgresql/${PG_MAJOR}/extension"
+
+          cp "dist/pg${PG_MAJOR}/extension/pg_strict.so" "${RPM_ROOT}/usr/pgsql-${PG_MAJOR}/lib/"
+          cp "dist/pg${PG_MAJOR}/extension/pg_strict.control" "${RPM_ROOT}/usr/pgsql-${PG_MAJOR}/share/extension/"
+          cp "dist/pg${PG_MAJOR}/extension/pg_strict--${VERSION}.sql" "${RPM_ROOT}/usr/pgsql-${PG_MAJOR}/share/extension/"
+
+          cp "dist/pg${PG_MAJOR}/extension/pg_strict.so" "${DEB_ROOT}/usr/lib/postgresql/${PG_MAJOR}/lib/"
+          cp "dist/pg${PG_MAJOR}/extension/pg_strict.control" "${DEB_ROOT}/usr/share/postgresql/${PG_MAJOR}/extension/"
+          cp "dist/pg${PG_MAJOR}/extension/pg_strict--${VERSION}.sql" "${DEB_ROOT}/usr/share/postgresql/${PG_MAJOR}/extension/"
+
+          RPM_ASSET="dist/pg_strict_${PG_MAJOR}-${VERSION}-1.${RPM_ARCH}.rpm"
+          DEB_ASSET="dist/pg-strict-${PG_MAJOR}_${VERSION}-1_${DEB_ARCH}.deb"
+
+          fpm -s dir -t rpm \
+            -n "pg_strict_${PG_MAJOR}" \
+            -v "${VERSION}" \
+            --iteration "1" \
+            --architecture "${RPM_ARCH}" \
+            --license "MIT" \
+            --url "https://github.com/${GITHUB_REPOSITORY}" \
+            --description "Prevent dangerous UPDATE and DELETE without WHERE clause" \
+            -p "${RPM_ASSET}" \
+            -C "${RPM_ROOT}" \
+            "usr/pgsql-${PG_MAJOR}/lib/pg_strict.so" \
+            "usr/pgsql-${PG_MAJOR}/share/extension/pg_strict.control" \
+            "usr/pgsql-${PG_MAJOR}/share/extension/pg_strict--${VERSION}.sql"
+
+          fpm -s dir -t deb \
+            -n "pg-strict-${PG_MAJOR}" \
+            -v "${VERSION}" \
+            --iteration "1" \
+            --architecture "${DEB_ARCH}" \
+            --license "MIT" \
+            --url "https://github.com/${GITHUB_REPOSITORY}" \
+            --description "Prevent dangerous UPDATE and DELETE without WHERE clause" \
+            -p "${DEB_ASSET}" \
+            -C "${DEB_ROOT}" \
+            "usr/lib/postgresql/${PG_MAJOR}/lib/pg_strict.so" \
+            "usr/share/postgresql/${PG_MAJOR}/extension/pg_strict.control" \
+            "usr/share/postgresql/${PG_MAJOR}/extension/pg_strict--${VERSION}.sql"
+
       - name: Verify build artifacts
         run: |
           echo "Verifying build artifacts for pg${PG_MAJOR}..."
@@ -373,6 +447,31 @@ jobs:
           # Check tarball was created
           if [ ! -f "dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz" ]; then
             echo "ERROR: tarball not found"
+            exit 1
+          fi
+
+          case "${ARCH_SUFFIX}" in
+            linux-x86_64)
+              RPM_ARCH="x86_64"
+              DEB_ARCH="amd64"
+              ;;
+            linux-aarch64)
+              RPM_ARCH="aarch64"
+              DEB_ARCH="arm64"
+              ;;
+            *)
+              echo "Unsupported ARCH_SUFFIX: ${ARCH_SUFFIX}"
+              exit 1
+              ;;
+          esac
+
+          if [ ! -f "dist/pg_strict_${PG_MAJOR}-${VERSION}-1.${RPM_ARCH}.rpm" ]; then
+            echo "ERROR: rpm package not found"
+            exit 1
+          fi
+
+          if [ ! -f "dist/pg-strict-${PG_MAJOR}_${VERSION}-1_${DEB_ARCH}.deb" ]; then
+            echo "ERROR: deb package not found"
             exit 1
           fi
 
@@ -402,6 +501,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ASSET="dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz"
-          echo "Uploading ${ASSET} to ${TAG_NAME}"
-          gh release upload "${TAG_NAME}" "${ASSET}" --clobber --repo "${GITHUB_REPOSITORY}"
+          TAR_ASSET="dist/pg_strict-pg${PG_MAJOR}-${ARCH_SUFFIX}.tar.gz"
+
+          case "${ARCH_SUFFIX}" in
+            linux-x86_64)
+              RPM_ARCH="x86_64"
+              DEB_ARCH="amd64"
+              ;;
+            linux-aarch64)
+              RPM_ARCH="aarch64"
+              DEB_ARCH="arm64"
+              ;;
+            *)
+              echo "Unsupported ARCH_SUFFIX: ${ARCH_SUFFIX}"
+              exit 1
+              ;;
+          esac
+
+          RPM_ASSET="dist/pg_strict_${PG_MAJOR}-${VERSION}-1.${RPM_ARCH}.rpm"
+          DEB_ASSET="dist/pg-strict-${PG_MAJOR}_${VERSION}-1_${DEB_ARCH}.deb"
+
+          echo "Uploading ${TAR_ASSET}, ${RPM_ASSET}, ${DEB_ASSET} to ${TAG_NAME}"
+          gh release upload "${TAG_NAME}" "${TAR_ASSET}" "${RPM_ASSET}" "${DEB_ASSET}" --clobber --repo "${GITHUB_REPOSITORY}"

@@ -175,7 +175,7 @@ sudo cp target/debug/libpg_strict.dylib "$PG_LIB/"
 
 # Control and SQL files (same for both platforms)
 sudo cp pg_strict.control "$PG_SHARE/extension/"
-sudo cp pg_strict--1.0.4.sql "$PG_SHARE/extension/"
+sudo cp pg_strict--1.0.5.sql "$PG_SHARE/extension/"
 ```
 
 5. Enable preload and restart PostgreSQL:

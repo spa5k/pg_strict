@@ -1,5 +1,5 @@
 comment = 'Blocks dangerous queries before they run - prevents accidental mass updates/deletes without WHERE clauses'
-default_version = '1.0.4'
+default_version = '1.0.5'
 module_pathname = 'pg_strict'
 relocatable = false
 superuser = true
