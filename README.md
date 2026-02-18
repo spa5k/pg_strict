@@ -51,7 +51,7 @@ Each setting supports three modes:
 
 ### Option 1: Install from Pre-built Binaries (Recommended)
 
-Pre-built binaries are available for Linux (x86_64) on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
+Pre-built binaries are available for Linux (`x86_64`, `aarch64`) on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
 
 1. Download the appropriate package for your PostgreSQL version:
 
@@ -90,7 +90,17 @@ sudo cp pg_strict.control "$PG_SHARE/extension/"
 sudo cp pg_strict--*.sql "$PG_SHARE/extension/"
 ```
 
-3. Enable the extension:
+3. Enable preload and restart PostgreSQL:
+
+```conf
+shared_preload_libraries = 'pg_strict'
+```
+
+```bash
+sudo systemctl restart postgresql
+```
+
+4. Enable the extension:
 
 ```sql
 CREATE EXTENSION pg_strict;
@@ -165,10 +175,20 @@ sudo cp target/debug/libpg_strict.dylib "$PG_LIB/"
 
 # Control and SQL files (same for both platforms)
 sudo cp pg_strict.control "$PG_SHARE/extension/"
-sudo cp pg_strict--1.0.2.sql "$PG_SHARE/extension/"
+sudo cp pg_strict--1.0.4.sql "$PG_SHARE/extension/"
 ```
 
-5. Enable the extension:
+5. Enable preload and restart PostgreSQL:
+
+```conf
+shared_preload_libraries = 'pg_strict'
+```
+
+```bash
+sudo systemctl restart postgresql
+```
+
+6. Enable the extension:
 
 ```sql
 CREATE EXTENSION pg_strict;
@@ -179,6 +199,9 @@ CREATE EXTENSION pg_strict;
 ```sql
 -- Check extension is installed
 SELECT * FROM pg_extension WHERE extname = 'pg_strict';
+
+-- Confirm preload includes pg_strict
+SHOW shared_preload_libraries;
 
 -- Check version
 SELECT pg_strict_version();

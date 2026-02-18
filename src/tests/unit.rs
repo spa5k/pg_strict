@@ -1,6 +1,10 @@
 #[pg_test]
 fn test_pg_strict_version() {
-    assert_eq!("1.0.2", api::pg_strict_version());
+    let version = api::pg_strict_version();
+    let semver_like = version
+        .split('.')
+        .all(|segment| !segment.is_empty() && segment.chars().all(|ch| ch.is_ascii_digit()));
+    assert!(semver_like, "expected semver-like numeric version, got {version}");
 }
 
 #[pg_test]

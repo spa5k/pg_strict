@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Tag/version to release (e.g. v1.0.2)"
+        description: "Tag/version to release (e.g. v1.0.4)"
         required: false
         type: string
 
