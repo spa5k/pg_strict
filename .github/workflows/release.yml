@@ -89,54 +89,32 @@ jobs:
 
           ## Installation
 
-          ### Quick Install (Linux x86_64)
+          Pre-built artifacts are published for PostgreSQL 13-18 on Linux x86_64 and aarch64.
 
-          Download and install the pre-built binary for your PostgreSQL version:
+          Asset naming:
+          - tarball: \`pg_strict-pg<PG_MAJOR>-linux-<x86_64|aarch64>.tar.gz\`
+          - rpm: \`pg_strict_<PG_MAJOR>-${VERSION}-1.<x86_64|aarch64>.rpm\`
+          - deb: \`pg-strict-<PG_MAJOR>_${VERSION}-1_<amd64|arm64>.deb\`
 
-          #### PostgreSQL 13
+          ### Quick Install via RPM (RHEL/Alma/Rocky/CentOS)
+
           \`\`\`bash
-          wget https://github.com/${REPO}/releases/download/${TAG_NAME}/pg_strict-pg13-linux-x86_64.tar.gz
-          tar -xzf pg_strict-pg13-linux-x86_64.tar.gz
-          sudo cp pg_strict.so \$(pg_config --libdir)/
-          sudo cp pg_strict.control pg_strict--*.sql \$(pg_config --sharedir)/extension/
+          # Example: PG15 x86_64
+          sudo rpm -Uvh pg_strict_15-${VERSION}-1.x86_64.rpm
           \`\`\`
 
-          #### PostgreSQL 14
+          ### Quick Install via DEB (Debian/Ubuntu)
+
           \`\`\`bash
-          wget https://github.com/${REPO}/releases/download/${TAG_NAME}/pg_strict-pg14-linux-x86_64.tar.gz
-          tar -xzf pg_strict-pg14-linux-x86_64.tar.gz
-          sudo cp pg_strict.so \$(pg_config --libdir)/
-          sudo cp pg_strict.control pg_strict--*.sql \$(pg_config --sharedir)/extension/
+          # Example: PG15 amd64
+          sudo dpkg -i pg-strict-15_${VERSION}-1_amd64.deb
           \`\`\`
 
-          #### PostgreSQL 15
+          ### Quick Install via Tarball
+
           \`\`\`bash
-          wget https://github.com/${REPO}/releases/download/${TAG_NAME}/pg_strict-pg15-linux-x86_64.tar.gz
+          # Example: PG15 x86_64
           tar -xzf pg_strict-pg15-linux-x86_64.tar.gz
-          sudo cp pg_strict.so \$(pg_config --libdir)/
-          sudo cp pg_strict.control pg_strict--*.sql \$(pg_config --sharedir)/extension/
-          \`\`\`
-
-          #### PostgreSQL 16
-          \`\`\`bash
-          wget https://github.com/${REPO}/releases/download/${TAG_NAME}/pg_strict-pg16-linux-x86_64.tar.gz
-          tar -xzf pg_strict-pg16-linux-x86_64.tar.gz
-          sudo cp pg_strict.so \$(pg_config --libdir)/
-          sudo cp pg_strict.control pg_strict--*.sql \$(pg_config --sharedir)/extension/
-          \`\`\`
-
-          #### PostgreSQL 17
-          \`\`\`bash
-          wget https://github.com/${REPO}/releases/download/${TAG_NAME}/pg_strict-pg17-linux-x86_64.tar.gz
-          tar -xzf pg_strict-pg17-linux-x86_64.tar.gz
-          sudo cp pg_strict.so \$(pg_config --libdir)/
-          sudo cp pg_strict.control pg_strict--*.sql \$(pg_config --sharedir)/extension/
-          \`\`\`
-
-          #### PostgreSQL 18
-          \`\`\`bash
-          wget https://github.com/${REPO}/releases/download/${TAG_NAME}/pg_strict-pg18-linux-x86_64.tar.gz
-          tar -xzf pg_strict-pg18-linux-x86_64.tar.gz
           sudo cp pg_strict.so \$(pg_config --libdir)/
           sudo cp pg_strict.control pg_strict--*.sql \$(pg_config --sharedir)/extension/
           \`\`\`

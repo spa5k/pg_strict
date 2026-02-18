@@ -49,45 +49,44 @@ Each setting supports three modes:
 
 ## Installation
 
-### Option 1: Install from Pre-built Binaries (Recommended)
+### Option 1: Install from Pre-built Release Assets (Recommended)
 
-Pre-built binaries are available for Linux (`x86_64`, `aarch64`) on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
+Pre-built release assets are available for Linux (`x86_64`, `aarch64`) and PostgreSQL 13-18 on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
 
-1. Download the appropriate package for your PostgreSQL version:
+1. Download the asset matching your PostgreSQL major version and architecture.
 
-```bash
-# For PostgreSQL 13
-wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg13-linux-x86_64.tar.gz
+Asset naming:
+- tarball: `pg_strict-pg<PG_MAJOR>-linux-<x86_64|aarch64>.tar.gz`
+- rpm: `pg_strict_<PG_MAJOR>-<VERSION>-1.<x86_64|aarch64>.rpm`
+- deb: `pg-strict-<PG_MAJOR>_<VERSION>-1_<amd64|arm64>.deb`
 
-# For PostgreSQL 14
-wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg14-linux-x86_64.tar.gz
+2. Install using one of the formats below.
 
-# For PostgreSQL 15
-wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg15-linux-x86_64.tar.gz
-
-# For PostgreSQL 16
-wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg16-linux-x86_64.tar.gz
-
-# For PostgreSQL 17
-wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg17-linux-x86_64.tar.gz
-
-# For PostgreSQL 18
-wget https://github.com/spa5k/pg_strict/releases/latest/download/pg_strict-pg18-linux-x86_64.tar.gz
-```
-
-2. Extract and install:
+Tarball:
 
 ```bash
-# Extract the archive
+# Example: PG15 x86_64
 tar -xzf pg_strict-pg15-linux-x86_64.tar.gz
 
-# Copy files to PostgreSQL directories
 PG_LIB=$(pg_config --libdir)
 PG_SHARE=$(pg_config --sharedir)
-
 sudo cp pg_strict.so "$PG_LIB/"
 sudo cp pg_strict.control "$PG_SHARE/extension/"
 sudo cp pg_strict--*.sql "$PG_SHARE/extension/"
+```
+
+RPM (RHEL/Alma/Rocky/CentOS):
+
+```bash
+# Example: PG15 x86_64
+sudo rpm -Uvh ./pg_strict_15-<VERSION>-1.x86_64.rpm
+```
+
+DEB (Debian/Ubuntu):
+
+```bash
+# Example: PG15 amd64
+sudo dpkg -i ./pg-strict-15_<VERSION>-1_amd64.deb
 ```
 
 3. Enable preload and restart PostgreSQL:
