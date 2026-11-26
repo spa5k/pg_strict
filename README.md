@@ -51,7 +51,7 @@ Each setting supports three modes:
 
 ### Option 1: Install from Pre-built Release Assets (Recommended)
 
-Pre-built release assets are available for Linux (`x86_64`, `aarch64`) and PostgreSQL 13-18 on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
+Pre-built release assets are available for Linux (`x86_64`, `aarch64`) and PostgreSQL 15-19 on the [Releases](https://github.com/spa5k/pg_strict/releases) page.
 
 1. Download the asset matching your PostgreSQL major version and architecture.
 
@@ -112,7 +112,7 @@ CREATE EXTENSION pg_strict;
 #### Prerequisites
 
 - Rust nightly toolchain
-- `cargo-pgrx = 0.16.1`
+- `cargo-pgrx = 0.20.1`
 - libclang and standard PostgreSQL build dependencies
 
 #### Build Steps
@@ -120,7 +120,7 @@ CREATE EXTENSION pg_strict;
 1. Install cargo-pgrx:
 
 ```bash
-cargo install cargo-pgrx --version 0.16.1 --locked
+cargo install cargo-pgrx --version 0.20.1 --locked
 ```
 
 2. Initialize pgrx-managed PostgreSQL versions:
@@ -134,12 +134,6 @@ cargo pgrx init
 **On Linux:**
 
 ```bash
-# For PostgreSQL 13
-cargo build --no-default-features --features pg13
-
-# For PostgreSQL 14
-cargo build --no-default-features --features pg14
-
 # For PostgreSQL 15
 cargo build --no-default-features --features pg15
 
@@ -151,6 +145,9 @@ cargo build --no-default-features --features pg17
 
 # For PostgreSQL 18
 cargo build --no-default-features --features pg18
+
+# For PostgreSQL 19
+cargo build --no-default-features --features pg19
 ```
 
 **On macOS:**

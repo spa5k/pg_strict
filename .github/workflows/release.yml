@@ -89,7 +89,7 @@ jobs:
 
           ## Installation
 
-          Pre-built artifacts are published for PostgreSQL 13-18 on Linux x86_64 and aarch64.
+          Pre-built artifacts are published for PostgreSQL 15-19 on Linux x86_64 and aarch64.
 
           Asset naming:
           - tarball: \`pg_strict-pg<PG_MAJOR>-linux-<x86_64|aarch64>.tar.gz\`
@@ -178,30 +178,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - pg_major: "13"
-            pg_feature: "pg13"
-            target:
-              name: x86_64
-              runner: ubuntu-latest
-              suffix: linux-x86_64
-          - pg_major: "13"
-            pg_feature: "pg13"
-            target:
-              name: aarch64
-              runner: ubuntu-24.04-arm
-              suffix: linux-aarch64
-          - pg_major: "14"
-            pg_feature: "pg14"
-            target:
-              name: x86_64
-              runner: ubuntu-latest
-              suffix: linux-x86_64
-          - pg_major: "14"
-            pg_feature: "pg14"
-            target:
-              name: aarch64
-              runner: ubuntu-24.04-arm
-              suffix: linux-aarch64
           - pg_major: "15"
             pg_feature: "pg15"
             target:
@@ -246,6 +222,18 @@ jobs:
               suffix: linux-x86_64
           - pg_major: "18"
             pg_feature: "pg18"
+            target:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+              suffix: linux-aarch64
+          - pg_major: "19"
+            pg_feature: "pg19"
+            target:
+              name: x86_64
+              runner: ubuntu-latest
+              suffix: linux-x86_64
+          - pg_major: "19"
+            pg_feature: "pg19"
             target:
               name: aarch64
               runner: ubuntu-24.04-arm
@@ -298,7 +286,7 @@ jobs:
           if command -v cargo-pgrx >/dev/null 2>&1; then
             echo "cargo-pgrx already present: $(cargo pgrx --version)"
           else
-            cargo install cargo-pgrx --locked --version 0.16.1
+            cargo install cargo-pgrx --locked --version 0.20.1
           fi
 
       - name: Initialize pgrx (download Postgres)
