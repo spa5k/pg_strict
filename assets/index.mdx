@@ -504,16 +504,16 @@ CREATE EXTENSION pg_strict;
 Prerequisites:
 
 - Rust nightly toolchain
-- `cargo-pgrx` (README uses `0.16.1`)
+- `cargo-pgrx` (README uses `0.20.1`)
 - Standard PostgreSQL build deps (including `libclang`)
 
 Build:
 
 ```bash
-cargo install cargo-pgrx --version 0.16.1 --locked
+cargo install cargo-pgrx --version 0.20.1 --locked
 cargo pgrx init
 
-# pick one: pg13 / pg14 / pg15 / pg16 / pg17 / pg18
+# pick one: pg15 / pg16 / pg17 / pg18 / pg19
 cargo build --no-default-features --features pg15
 ```
 
